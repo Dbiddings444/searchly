@@ -1,0 +1,8 @@
+CREATE TABLE images (
+  id SERIAL PRIMARY KEY,
+  url TEXT NOT NULL,
+  s3_key TEXT NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

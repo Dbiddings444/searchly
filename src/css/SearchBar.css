@@ -1,0 +1,114 @@
+.navBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 0px;
+}
+
+.uploadContainer {
+    max-width: 720px;
+    margin: 24px auto;
+    padding: 36px 28px;
+    border: 2px dashed #0099ff;
+    border-radius: 12px;
+    background-color: #f8fbff;
+    text-align: center;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.uploadContainer:hover,
+.uploadContainer:focus-within {
+    border-color: #006bbf;
+    background-color: #eef6ff;
+    box-shadow: 0 0 0 4px rgba(0, 153, 255, 0.14);
+}
+
+.uploadContainer.active {
+    border-color: #1a9cff;
+    background-color: #e7f4ff;
+}
+
+.uploadContainer h1 {
+    margin: 0 0 10px;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #0a3152;
+}
+
+.uploadContainer p {
+    margin: 0;
+    color: #345a7f;
+    font-size: 1rem;
+}
+
+.uploadContainer div:first-child {
+    display: inline-block;
+    min-width: 240px;
+    color: #0d4f7a;
+    font-weight: 600;
+}
+
+.searchBar {
+    max-width: 720px;
+    margin: 0 auto 24px;
+    padding: 14px 16px;
+    border: 2px solid #0099ff;
+    border-radius: 12px;
+    background-color: #f8fbff;
+    display: flex;
+    gap: 9px;
+    align-items: center;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.searchBar:focus-within {
+    border-color: #006bbf;
+    box-shadow: 0 0 0 4px rgba(0, 153, 255, 0.14);
+    background-color: #eef6ff;
+}
+
+.searchBar input[type="search"] {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1px solid #c8d8ec;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #1a2d47;
+}
+
+.searchBar input[type="search"]:focus {
+    outline: none;
+    border-color: #4f90d8;
+    box-shadow: 0 0 0 2px rgba(79, 144, 216, 0.3);
+}
+
+.searchBar button {
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #0099ff;
+    color: #ffffff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.searchBar button:hover:not(:disabled) {
+    background-color: #007bcc;
+}
+
+.searchBar button:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.searchBar button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
