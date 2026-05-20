@@ -4,15 +4,15 @@ const imageController = require('../controllers/imageController');
 
 // Route to upload an image
 router.post('/upload-url', imageController.getUploadUrl);
-router.post('/images', imageController.uploadImage);
+router.post('/', imageController.uploadImageData);
 
 // Route to get all images
-router.get('/images', imageController.getAllImages);
+router.get('/', imageController.getAllImages);
 // Route to get a specific image by ID
-router.get('/images/:id', imageController.getImageById);
+router.get('/:id', imageController.getImageById);
 // Route to update an image's tags and description
-router.put('/images/:id', imageController.updateImage);
+router.put('/:id', imageController.updateImage);
 // Route to delete an image
-router.delete('/images/:id', imageController.deleteImage);
+router.delete('/:id', imageController.deleteImage);
 
 module.exports = router;

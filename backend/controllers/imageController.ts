@@ -1,6 +1,6 @@
 import { pool } from '../db/index.js';
 import { Request, Response } from 'express';
-import { generateUploadUrl } from '../../src/services/uploadService.ts';
+import { generateUploadUrl } from '../services/uploadService.ts';
 
 interface CreateImageBody {
   url: string
@@ -10,7 +10,7 @@ interface CreateImageBody {
   title: string
 }
 
-export const uploadImage = async (req: Request, res: Response) => {
+export const uploadImageData = async (req: Request, res: Response) => {
     try {
         const { url, tags, s3Key, description, title }: CreateImageBody = req.body;
 
@@ -40,6 +40,7 @@ export const getUploadUrl = async (req: Request, res: Response) => {
         res.json(result);
      }
      catch (err) {
+        console.log('Error generating upload URL:', err);
         res.status(500).json({ error: 'Failed to generate upload URL'});
      }
 }
@@ -91,7 +92,7 @@ export const updateImage = async (req: Request, res: Response) => {
 
     try {
         const { rows } = await pool.query(
-            'UPDATE images SET tags = array_append(tags, $1), description = $2, title = $3 WHERE id = $4 RETURNING *',
+            'UPDATE images SET tags = $1, description = $2, title = $3 WHERE id = $4 RETURNING *',
             [tags, description, title, id]
         );
         if(rows.length === 0){
