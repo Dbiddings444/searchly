@@ -55,20 +55,20 @@ function HomePage() {
           }),
         });
 
-        if (!uploadUrlResponse.ok) {
-          throw new Error('Failed to get upload URL');
-        }
-
         const { uploadUrl, key: s3Key, url } = await uploadUrlResponse.json();
 
         // Upload file directly to S3 using the pre-signed URL
+        console.log('[S3 Upload] uploadUrl:', uploadUrl);
+        console.log('[S3 Upload] file type:', formData.file!.type);
+        console.log('[S3 Upload] file name:', formData.file!.name);
         const s3UploadResponse = await fetch(uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': formData.file!.type },
           body: formData.file,
         });
-
-        if (!s3UploadResponse.ok) {
+        console.log('[S3 Upload] S3 response status:', s3UploadResponse.status);
+        if (!s3UploadResponse.ok) { 
+          const errorText = await s3UploadResponse.text();
+          console.error('[S3 Upload] Failed to upload file to S3:', errorText);
           throw new Error('Failed to upload file to S3');
         }
 

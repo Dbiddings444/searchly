@@ -18,7 +18,6 @@ export const uploadImageData = async (req: Request, res: Response) => {
             'INSERT INTO images (url, tags, s3_key, description, title) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [url, tags, s3Key, description, title]
         );
-
         res.status(201).json(result.rows[0]);
     }
     catch (error) {
