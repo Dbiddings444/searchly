@@ -22,7 +22,43 @@ function HomePage() {
     tags: [] as string[]
   });
   const [currentTag, setCurrentTag] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const API_BASE = 'http://localhost:8080/api/images';
+
+  useEffect(() => {
+    const fetchImages = async () => {
+      setLoading(true);
+      setLoadError(null);
+
+      try {
+        const response = await fetch(API_BASE);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch images: ${response.status}`);
+        }
+
+        const data: Array<{ id: number; url: string; title: string; description: string; tags: string[] }> = await response.json();
+        setImages(
+          data.map((image) => ({
+            id: image.id,
+            src: image.url,
+            name: '',
+            title: image.title,
+            description: image.description,
+            tags: image.tags || [],
+          }))
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Error loading images:', error);
+        setLoadError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -35,14 +71,39 @@ function HomePage() {
     if (!formData.file && !editingImageId) return; // file required for new uploads
 
     if (editingImageId) {
-      // Editing existing image
-      setImages((current) =>
-        current.map((img) =>
-          img.id === editingImageId
-            ? { ...img, title: formData.title, description: formData.description, tags: formData.tags }
-            : img
-        )
-      );
+      try {
+        const updateResponse = await fetch(`${API_BASE}/${editingImageId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: formData.title,
+            description: formData.description,
+            tags: formData.tags,
+          }),
+        });
+
+        if (!updateResponse.ok) {
+          const errorBody = await updateResponse.text();
+          throw new Error(`Failed to update image (${updateResponse.status}): ${errorBody || 'No error details'}`);
+        }
+
+        const updatedImage = await updateResponse.json();
+        setImages((current) =>
+          current.map((img) =>
+            img.id === editingImageId
+              ? {
+                  ...img,
+                  title: updatedImage.title ?? formData.title,
+                  description: updatedImage.description ?? formData.description,
+                  tags: updatedImage.tags ?? formData.tags,
+                }
+              : img
+          )
+        );
+      } catch (error) {
+        console.error('[Edit Error] Full error:', error);
+        return;
+      }
     } else {
       try {
         // Get pre-signed upload URL from backend
@@ -69,7 +130,7 @@ function HomePage() {
         if (!s3UploadResponse.ok) { 
           const errorText = await s3UploadResponse.text();
           console.error('[S3 Upload] Failed to upload file to S3:', errorText);
-          throw new Error('Failed to upload file to S3');
+          throw new Error(`S3 upload failed (${s3UploadResponse.status}): ${errorText || 'No error details'}`);
         }
 
         // Save image metadata to backend
@@ -86,7 +147,8 @@ function HomePage() {
         });
 
         if (!saveResponse.ok) {
-          throw new Error('Failed to save image metadata');
+          const errorBody = await saveResponse.text();
+          throw new Error(`Failed to save image metadata (${saveResponse.status}): ${errorBody || 'No error details'}`);
         }
 
         const createdImage = await saveResponse.json();
@@ -102,7 +164,7 @@ function HomePage() {
 
         setImages((current) => [...current, newImage]);
       } catch (error) {
-        console.error('Upload failed:', error);
+        console.error('[Upload Error] Full error:', error);
         return;
       }
     }
@@ -113,12 +175,26 @@ function HomePage() {
     setEditingImageId(null);
   };
 
-  const removeImage = (id: number) => {
-    setImages((current) => {
-      const target = current.find((item) => item.id === id);
-      if (target) URL.revokeObjectURL(target.src);
-      return current.filter((item) => item.id !== id);
-    });
+  const removeImage = async (id: number) => {
+    try {
+      const deleteResponse = await fetch(`${API_BASE}/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!deleteResponse.ok) {
+        const errorBody = await deleteResponse.text();
+        throw new Error(`Failed to delete image (${deleteResponse.status}): ${errorBody || 'No error details'}`);
+      }
+
+      setImages((current) => {
+        const target = current.find((item) => item.id === id);
+        if (target) URL.revokeObjectURL(target.src);
+        return current.filter((item) => item.id !== id);
+      });
+    } catch (error) {
+      console.error('[Delete Error] Full error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete image');
+    }
   };
 
   const editImage = (id: number) => {
@@ -128,7 +204,7 @@ function HomePage() {
         file: null, // file can't be edited
         title: image.title,
         description: image.description,
-        tags: image.tags
+        tags: image.tags,
       });
       setEditingImageId(id);
       setIsModalOpen(true);
@@ -223,6 +299,24 @@ function HomePage() {
       )}
 
       <SearchBar />
+
+      {loading && (
+        <div className="loadingState" style={{ textAlign: 'center', margin: '16px', color: '#444' }}>
+          Loading images...
+        </div>
+      )}
+
+      {loadError && !loading && (
+        <div className="errorState" style={{ textAlign: 'center', margin: '16px', color: '#c53030' }}>
+          Unable to load images: {loadError}
+        </div>
+      )}
+
+      {!loading && !loadError && images.length === 0 && (
+        <div className="emptyState" style={{ textAlign: 'center', margin: '16px', color: '#555' }}>
+          No uploaded images yet. Use the button above to add one.
+        </div>
+      )}
 
       {images.length > 0 && (
         <div className="imageGrid" aria-live="polite">

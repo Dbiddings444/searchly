@@ -1,10 +1,23 @@
 import { pool } from '../db/index.js';
 import { Request, Response } from 'express';
 import { generateUploadUrl } from '../services/uploadService.ts';
+import { analyzeImage } from '../services/analyzeImageService.ts';
+
+// Normalize tags: ensure array of non-empty trimmed lowercase strings, de-duplicated
+const normalizeTags = (tagsInput?: any): string[] => {
+    if (!tagsInput) return [];
+    const arr = Array.isArray(tagsInput) ? tagsInput : [tagsInput];
+    const cleaned = arr
+        .map((t) => (t === null || t === undefined ? '' : String(t)))
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .map((s) => s.toLowerCase());
+    return Array.from(new Set(cleaned));
+};
 
 interface CreateImageBody {
   url: string
-  tags: string[]
+  tags?: string[]
   s3Key: string
   description: string
   title: string
@@ -13,16 +26,20 @@ interface CreateImageBody {
 export const uploadImageData = async (req: Request, res: Response) => {
     try {
         const { url, tags, s3Key, description, title }: CreateImageBody = req.body;
+        const detectedTags = s3Key ? await analyzeImage(s3Key) : [];
+        const userTags = normalizeTags(tags);
+        const rekTags = normalizeTags(detectedTags);
+        const tagsToSave = Array.from(new Set([...userTags, ...rekTags]));
 
         const result = await pool.query(
             'INSERT INTO images (url, tags, s3_key, description, title) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [url, tags, s3Key, description, title]
+            [url, tagsToSave, s3Key, description, title]
         );
         res.status(201).json(result.rows[0]);
     }
     catch (error) {
         console.error('Error uploading image:', error);
-        res.status(500).json({ error: 'Failed to upload image' });
+        res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to upload image' });
     }
 };
 
@@ -72,7 +89,13 @@ export const getImageById = async (req: Request, res: Response) => {
 
 export const deleteImage = async (req: Request, res: Response) => {
     const {id} = req.params;
-    try {
+    
+    try { 
+        
+        const imageResult = await pool.query('SELECT s3_key FROM images WHERE id = $1',[id]);
+        if(imageResult.rows.length === 0){
+            return res.status(404).json({error: 'image not found'});
+        }
         const { rows } = await pool.query('DELETE FROM images WHERE id = $1 RETURNING *', [id]);
         if(rows.length === 0){
             return res.status(404).json({error: 'image not found'});
@@ -88,11 +111,12 @@ export const deleteImage = async (req: Request, res: Response) => {
 export const updateImage = async (req: Request, res: Response) => {
     const { id } = req.params;
     const {tags, description, title} = req.body;
+    const normalizedTags = normalizeTags(tags);
 
     try {
         const { rows } = await pool.query(
             'UPDATE images SET tags = $1, description = $2, title = $3 WHERE id = $4 RETURNING *',
-            [tags, description, title, id]
+            [normalizedTags, description, title, id]
         );
         if(rows.length === 0){
             return res.status(404).json({error: 'image not found'});
