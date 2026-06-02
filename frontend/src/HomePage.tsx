@@ -15,6 +15,7 @@ function HomePage() {
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingImageId, setEditingImageId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     file: null as File | null,
     title: '',
@@ -70,8 +71,9 @@ function HomePage() {
     e.preventDefault();
     if (!formData.file && !editingImageId) return; // file required for new uploads
 
-    if (editingImageId) {
-      try {
+    setIsSubmitting(true);
+    try {
+      if (editingImageId) {
         const updateResponse = await fetch(`${API_BASE}/${editingImageId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -100,12 +102,7 @@ function HomePage() {
               : img
           )
         );
-      } catch (error) {
-        console.error('[Edit Error] Full error:', error);
-        return;
-      }
-    } else {
-      try {
+      } else {
         // Get pre-signed upload URL from backend
         const uploadUrlResponse = await fetch(`${API_BASE}/upload-url`, {
           method: 'POST',
@@ -163,16 +160,19 @@ function HomePage() {
         };
 
         setImages((current) => [...current, newImage]);
-      } catch (error) {
-        console.error('[Upload Error] Full error:', error);
-        return;
       }
-    }
 
-    setFormData({ file: null, title: '', description: '', tags: [] });
-    setCurrentTag('');
-    setIsModalOpen(false);
-    setEditingImageId(null);
+      setFormData({ file: null, title: '', description: '', tags: [] });
+      setCurrentTag('');
+      setIsModalOpen(false);
+      setEditingImageId(null);
+    } catch (error) {
+      console.error('[Upload Error] Full error:', error);
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      alert(`Upload failed: ${errorMsg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeImage = async (id: number) => {
@@ -292,7 +292,16 @@ function HomePage() {
                   ))}
                 </div>
               )}
-              <button type="submit">{editingImageId ? 'Update' : 'Submit'}</button>
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                style={{
+                  opacity: isSubmitting ? 0.6 : 1,
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isSubmitting ? 'Processing...' : (editingImageId ? 'Update' : 'Submit')}
+              </button>
             </form>
           </div>
         </div>

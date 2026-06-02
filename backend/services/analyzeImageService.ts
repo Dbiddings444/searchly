@@ -18,7 +18,7 @@ export const analyzeImage = async (s3Key: string) => {
       },
     },
     MaxLabels: 5,
-    MinConfidence: 70,
+    MinConfidence: 90,
   });
 
   try {

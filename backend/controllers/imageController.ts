@@ -2,6 +2,8 @@ import { pool } from '../db/index.js';
 import { Request, Response } from 'express';
 import { generateUploadUrl } from '../services/uploadService.ts';
 import { analyzeImage } from '../services/analyzeImageService.ts';
+import { DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { s3Client } from '../lib/s3.ts';
 
 // Normalize tags: ensure array of non-empty trimmed lowercase strings, de-duplicated
 const normalizeTags = (tagsInput?: any): string[] => {
@@ -90,20 +92,29 @@ export const getImageById = async (req: Request, res: Response) => {
 export const deleteImage = async (req: Request, res: Response) => {
     const {id} = req.params;
     
-    try { 
-        
+    try {
+        //s3 key query to get the key for deletion from S3
         const imageResult = await pool.query('SELECT s3_key FROM images WHERE id = $1',[id]);
-        if(imageResult.rows.length === 0){
-            return res.status(404).json({error: 'image not found'});
-        }
+        // database query to delete the image record and return the deleted record for S3 deletion
         const { rows } = await pool.query('DELETE FROM images WHERE id = $1 RETURNING *', [id]);
-        if(rows.length === 0){
+
+        if(imageResult.rows.length === 0 || rows.length === 0){
             return res.status(404).json({error: 'image not found'});
         }
-        return res.status(200).json({ message: 'Task deleted successfully' });
+
+        const image = imageResult.rows[0];
+        // Delete from S3
+        await s3Client.send(
+            new DeleteObjectCommand({
+                Bucket: process.env.S3_BUCKET_NAME!,
+                Key: image.s3_key,
+            })
+        );
+        console.log(`Deleted image with ID ${id} and S3 key ${image.s3_key}`);
+        return res.status(200).json({ message: 'Image deleted successfully' });
     }
     catch(err) {
-        console.log('Error deleting image:', err);
+        console.error('Error deleting image:', err);
         res.status(500).json({ error: 'Failed to delete image'});
     }
 }
