@@ -13,6 +13,7 @@ type UploadedImage = {
 
 function HomePage() {
   const [images, setImages] = useState<UploadedImage[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingImageId, setEditingImageId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +32,6 @@ function HomePage() {
     const fetchImages = async () => {
       setLoading(true);
       setLoadError(null);
-
       try {
         const response = await fetch(API_BASE);
         if (!response.ok) {
@@ -222,6 +222,15 @@ function HomePage() {
     setFormData({ ...formData, tags: formData.tags.filter(tag => tag !== tagToRemove) });
   };
 
+  const filteredImages = searchQuery.trim().toLowerCase()
+    ? images.filter((image) => {
+        const q = searchQuery.trim().toLowerCase();
+        const inTitle = image.title.toLowerCase().includes(q);
+        const inTags = image.tags.some((t) => t.toLowerCase().includes(q));
+        return inTitle || inTags;
+      })
+    : images;
+
   return (
     <div>
       <div className="navBar">
@@ -307,7 +316,7 @@ function HomePage() {
         </div>
       )}
 
-      <SearchBar />
+      <SearchBar onSearch={(q) => setSearchQuery(q)} />
 
       {loading && (
         <div className="loadingState" style={{ textAlign: 'center', margin: '16px', color: '#444' }}>
@@ -321,15 +330,15 @@ function HomePage() {
         </div>
       )}
 
-      {!loading && !loadError && images.length === 0 && (
+      {!loading && !loadError && filteredImages.length === 0 && (
         <div className="emptyState" style={{ textAlign: 'center', margin: '16px', color: '#555' }}>
-          No uploaded images yet. Use the button above to add one.
+          No uploaded images match this query yet. Use the button above to add one.
         </div>
       )}
 
-      {images.length > 0 && (
+      {filteredImages.length > 0 && (
         <div className="imageGrid" aria-live="polite">
-          {images.map((image) => (
+          {filteredImages.map((image) => (
             <div key={image.id} className="imageCard">
               <img src={image.src} alt={image.title} className="imageThumb" />
               <div className="imageActions">
