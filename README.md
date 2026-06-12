@@ -15,6 +15,7 @@ This README is written for contributors and users who may not be deeply familiar
 - Automatically analyze images with AWS Rekognition and save detected tags.
 - Save and manage image metadata (title, description, tags) in PostgreSQL.
 - Edit and delete images via the UI.
+- Filter images by title or tags within a post.
 
 Prerequisites (what you need on your machine)
 - Node.js (LTS recommended) and npm or yarn
