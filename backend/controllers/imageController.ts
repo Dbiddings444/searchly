@@ -66,10 +66,16 @@ export const getUploadUrl = async (req: Request, res: Response) => {
 export const getAllImages = async (req: Request, res: Response) => {
 
     try {
-            const { rows } = await pool.query('SELECT * FROM images');
-            return res.status(200).json(rows);
+        const { rows } = await pool.query('SELECT * FROM images');
+        return res.status(200).json(rows);
     }
-    catch (error) {
+    catch (error: any) {
+        // If the images table doesn't exist, return an empty array instead of an error
+        if (error && error.code === '42P01') {
+            console.warn('images table not found; returning empty array');
+            return res.status(200).json([]);
+        }
+
         console.error('Error fetching all images:', error);
         res.status(500).json({ error: 'Failed to fetch images' });
     }
