@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 
 const SAMPLE_TAGS = {
   nature: ["landscape", "outdoor", "sky", "trees", "mountains", "sunset", "ocean", "forest"],
@@ -7,7 +7,7 @@ const SAMPLE_TAGS = {
   food: ["food", "restaurant", "cooking", "meal", "cuisine", "drink"],
 };
 
-function TagBadge({ tag, onRemove }) {
+function TagBadge({ tag, onRemove }: TagBadgeProps) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 4,
@@ -27,10 +27,26 @@ function TagBadge({ tag, onRemove }) {
   );
 }
 
-function ImageCard({ image, onRemoveTag, onAddTag }) {
-  const [addingTag, setAddingTag] = useState(false);
-  const [newTag, setNewTag] = useState("");
-  const [expanded, setExpanded] = useState(false);
+type ImageType = {
+  id: number;
+  name: string;
+  url: string;
+  tags: string[];
+  loading?: boolean;
+  file?: File;
+  relevanceScore?: number;
+};
+
+type TagBadgeProps = { tag: string; onRemove?: (tag: string) => void };
+
+type ImageCardProps = { image: ImageType; onRemoveTag: (id: number, tag: string) => void; onAddTag: (id: number, tag: string) => void };
+
+type UploadZoneProps = { onFiles: (files: File[]) => void };
+
+function ImageCard({ image, onRemoveTag, onAddTag }: ImageCardProps) {
+  const [addingTag, setAddingTag] = useState<boolean>(false);
+  const [newTag, setNewTag] = useState<string>("");
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const handleAddTag = () => {
     if (newTag.trim()) {
@@ -143,20 +159,20 @@ function ImageCard({ image, onRemoveTag, onAddTag }) {
   );
 }
 
-function UploadZone({ onFiles }) {
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef();
+function UploadZone({ onFiles }: UploadZoneProps) {
+  const [dragging, setDragging] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleDrop = useCallback((e) => {
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragging(false);
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+    const files = Array.from(e.dataTransfer.files).filter((f): f is File => f.type.startsWith("image/"));
     if (files.length) onFiles(files);
   }, [onFiles]);
 
   return (
     <div
-      onClick={() => inputRef.current.click()}
+      onClick={() => inputRef.current?.click()}
       onDragOver={e => { e.preventDefault(); setDragging(true); }}
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
@@ -175,22 +191,22 @@ function UploadZone({ onFiles }) {
         or click to browse — JPG, PNG, WebP, GIF
       </p>
       <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: "none" }}
-        onChange={e => { const files = Array.from(e.target.files); if (files.length) onFiles(files); e.target.value = ""; }}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { const files = e.target.files ? Array.from(e.target.files) : []; if (files.length) onFiles(files); if (e.target) e.target.value = ""; }}
       />
     </div>
   );
 }
 
 export default function App() {
-  const [images, setImages] = useState([]);
-  const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("all");
-  const nextId = useRef(1);
+  const [images, setImages] = useState<ImageType[]>([]);
+  const [query, setQuery] = useState<string>("");
+  const [searching, setSearching] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<number[] | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const nextId = useRef<number>(1);
 
   // ─── Stub: replace with real Claude Vision API call ──────────────────────────
-  async function generateTags(imageBase64, mimeType) {
+  async function generateTags(_imageBase64: string, _mimeType: string): Promise<string[]> {
     // TODO: POST to your backend endpoint, e.g.:
     // const res = await fetch("/api/tag-image", {
     //   method: "POST",
@@ -207,7 +223,7 @@ export default function App() {
   }
 
   // ─── Stub: replace with real semantic search API call ───────────────────────
-  async function semanticSearch(query, images) {
+  async function semanticSearch(query: string, imgs: ImageType[]): Promise<{ id: number; score: number }[]> {
     // TODO: POST to your backend endpoint, e.g.:
     // const res = await fetch("/api/search", {
     //   method: "POST",
@@ -219,8 +235,8 @@ export default function App() {
     // Simulated semantic search for frontend demo:
     await new Promise(r => setTimeout(r, 800));
     const q = query.toLowerCase();
-    return images.map(img => {
-      const score = img.tags.reduce((acc, tag) => {
+    return imgs.map((img: ImageType) => {
+      const score = img.tags.reduce((acc: number, tag: string) => {
         if (tag.includes(q) || q.includes(tag)) return acc + 0.9;
         return acc + (Math.random() > 0.7 ? 0.2 : 0);
       }, 0) / Math.max(img.tags.length, 1);
@@ -228,8 +244,8 @@ export default function App() {
     }).sort((a, b) => b.score - a.score);
   }
 
-  const handleFiles = async (files) => {
-    const newImages = files.map(file => ({
+  const handleFiles = async (files: File[]) => {
+    const newImages: ImageType[] = files.map(file => ({
       id: nextId.current++,
       name: file.name,
       url: URL.createObjectURL(file),
@@ -241,12 +257,15 @@ export default function App() {
 
     for (const img of newImages) {
       const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result.split(",")[1];
-        const tags = await generateTags(base64, img.file.type);
-        setImages(prev => prev.map(i => i.id === img.id ? { ...i, tags, loading: false } : i));
+      reader.onload = async (e: ProgressEvent<FileReader>) => {
+        const result = e.target?.result;
+        if (typeof result === "string") {
+          const base64 = result.split(",")[1] || "";
+          const tags = await generateTags(base64, img.file?.type ?? "");
+          setImages(prev => prev.map(i => i.id === img.id ? { ...i, tags, loading: false } : i));
+        }
       };
-      reader.readAsDataURL(img.file);
+      if (img.file) reader.readAsDataURL(img.file);
     }
   };
 
@@ -254,7 +273,7 @@ export default function App() {
     if (!query.trim() || images.length === 0) return;
     setSearching(true);
     setSearchResults(null);
-    const results = await semanticSearch(query.trim(), images.filter(i => !i.loading));
+    const results = await semanticSearch(query.trim(), images.filter(i => !i.loading) as ImageType[]);
     const resultMap = Object.fromEntries(results.map(r => [r.id, r.score]));
     setImages(prev => prev.map(i => ({ ...i, relevanceScore: resultMap[i.id] })));
     setSearchResults(results.filter(r => r.score > 0.15).map(r => r.id));
@@ -267,11 +286,11 @@ export default function App() {
     setImages(prev => prev.map(i => { const { relevanceScore, ...rest } = i; return rest; }));
   };
 
-  const removeTag = (imageId, tag) => {
+  const removeTag = (imageId: number, tag: string) => {
     setImages(prev => prev.map(i => i.id === imageId ? { ...i, tags: i.tags.filter(t => t !== tag) } : i));
   };
 
-  const addTag = (imageId, tag) => {
+  const addTag = (imageId: number, tag: string) => {
     setImages(prev => prev.map(i => i.id === imageId && !i.tags.includes(tag) ? { ...i, tags: [...i.tags, tag] } : i));
   };
 
